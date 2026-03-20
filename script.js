@@ -45,6 +45,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadState();
     renderDashboard();
 
+    // Data export
+    document.getElementById("exportBtn").onclick = async () => {
+    const data = await chrome.storage.local.get("plannerPro");
+    const blob = new Blob([JSON.stringify(data.plannerPro, null, 2)], {type : 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup.json`;
+    a.click();
+    };
+
     //edit buttons
     document.getElementById("editDashBtn").onclick = (e) => {
         isEditMode = !isEditMode;
