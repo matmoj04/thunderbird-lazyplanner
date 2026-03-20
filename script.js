@@ -23,10 +23,9 @@ let isEditMode = false;
 // load saved data from local storage of thunderbird
 async function loadState() {
     try {
-        const stored = await chrome.storage.local.get("plannerPro");
-        if (stored.plannerPro) {
-            planner = stored.plannerPro;
-        }
+        const stored = await chrome.storage.local.get("plannerJSON");
+        if (stored.plannerJSON)
+            planner = stored.plannerJSON;
     } catch (e) {
         console.error("Storage failed:", e);
     }
@@ -34,7 +33,7 @@ async function loadState() {
 
 async function saveState() {
     try {
-        await chrome.storage.local.set({ plannerPro: planner });
+        await chrome.storage.local.set({ plannerJSON: planner });
     } catch (e) {
         console.error("Save failed:", e);
     }
@@ -47,13 +46,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Data export
     document.getElementById("exportBtn").onclick = async () => {
-    const data = await chrome.storage.local.get("plannerPro");
-    const blob = new Blob([JSON.stringify(data.plannerPro, null, 2)], {type : 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup.json`;
-    a.click();
+        const data = await chrome.storage.local.get("plannerJSON");
+        const blob = new Blob([JSON.stringify(data.plannerJSON, null, 2)], {type : 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        a.href = url;
+        a.download = `backup_${Date.now().toString()}.json`;
+
+        a.click();
     };
 
     // Data import
@@ -71,18 +72,35 @@ document.addEventListener("DOMContentLoaded", async () => {
             try {
                 const importedData = JSON.parse(event.target.result);
                 
-                // Basic validation: check if it has the semesters array
-                if (importedData.semesters) {
-                    planner = importedData;
+                // If it has the cards and if its an array
+                if (importedData.semesters && Array.isArray(importedData.semesters)) {
+                    let addedCount = 0;
+                    let skippedCount = 0;
+
+                    importedData.semesters.forEach(newSem => {
+                        // Check if a semester with this ID already exists in our current planner
+                        const exists = planner.semesters.some(existingSem => existingSem.id === newSem.id);
+                        
+                        if (!exists) {
+                            planner.semesters.push(newSem);
+                            addedCount++;
+                        } else {
+                            skippedCount++;
+                        }
+                    });
+
                     await saveState();
                     renderDashboard();
-                    alert("Data imported successfully!");
+                    
+                    alert(`Import Complete!\nAdded: ${addedCount} new semesters\nSkipped: ${skippedCount} duplicates`);
                 } else {
                     alert("Invalid backup file format.");
                 }
             } catch (err) {
                 alert("Error reading file: " + err.message);
             }
+            // Reset the input so you can import the same file again if needed
+            e.target.value = ""; 
         };
         reader.readAsText(file);
     };
@@ -294,11 +312,11 @@ function initPlanner() {
 function renderSubjectTable(sem, currentWW, container) {
     const table = document.createElement("table");
 
-    // Header
+    // Header render
     let html = `<thead><tr><th class="col-subject">Predmet</th><th class="col-abbr">Skratka</th>`;
     
-    for (let i=1; i<=totalWeeks; i++) 
-        html += `<th class="${i===currentWW?'current-week-col':''}">WW${i}</th>`;
+    for (let i = 1; i <= totalWeeks; i++) 
+        html += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
     html += `</tr></thead><tbody id="subBody"></tbody>`;
     
     table.innerHTML = html;
@@ -324,6 +342,7 @@ function renderSubjectTable(sem, currentWW, container) {
 
         row.appendChild(tdName);
 
+        // Abriviation
         const tdAbbr = document.createElement("td");
         tdAbbr.className = "col-abbr";
         tdAbbr.textContent = sub.abbr;
@@ -344,9 +363,8 @@ function renderSubjectTable(sem, currentWW, container) {
 
             td.innerHTML = data.text || "";
 
-            if (data.class) {
+            if (data.class)
                 td.className = data.class;
-            }
             
             if (data.note) {
                 td.title = data.note;
@@ -355,16 +373,15 @@ function renderSubjectTable(sem, currentWW, container) {
             }
 
             //Changes the coloring 
-            if(w === currentWW) {
+            if(w === currentWW)
                 td.classList.add("current-week-col");
-            }
 
             // Shuffle the icons on click
             td.onclick = () => {
                 // Disable the cell while editing
-                if(isEditMode)
+                if (isEditMode)
                     return;
-                
+
                 // TODO: Change for item picker                
                 // Find current icon index by comparing HTML, and then find next
                 let currentIdx = iconData.findIndex(icon => icon.html === td.innerHTML);
@@ -376,9 +393,8 @@ function renderSubjectTable(sem, currentWW, container) {
                 const allIconClasses = iconData.map(i => i.class).filter(c => c !== "");
                 td.classList.remove(...allIconClasses);
 
-                if (nextIcon.class) {
+                if (nextIcon.class)
                     td.classList.add(nextIcon.class);
-                }
 
                 saveCell(id, td.innerHTML, td.className, td.title);
             };
@@ -387,20 +403,22 @@ function renderSubjectTable(sem, currentWW, container) {
             td.oncontextmenu = (e) => {
                 e.preventDefault();
                 
-                if(isEditMode) 
+                if (isEditMode) 
                     return;
                 
                 const note = prompt("Comment:", td.title || "");
                 
-                if(note !== null) {
+                if (note !== null) {
                     td.title = note;
                     note ? td.classList.add("note-indicator") : td.classList.remove("note-indicator");
+
                     saveCell(id, td.innerHTML, td.className, td.title);
                 }
             };
 
             row.appendChild(td);
         }
+
         tbody.appendChild(row);
     });
 
@@ -411,10 +429,13 @@ function renderSubjectTable(sem, currentWW, container) {
         addBtn.innerHTML = '<span class="nf">\uf055</span> Add Subject';
 
         addBtn.onclick = () => {
-            if(!sem.subjects[planner.activeTab]) 
+            if (!sem.subjects[planner.activeTab]) 
                 sem.subjects[planner.activeTab] = [];
             
-            sem.subjects[planner.activeTab].push({name: "New Subject", abbr: "SUB"});
+            sem.subjects[planner.activeTab].push({
+                name: "",
+                abbr: ""
+            });
 
             saveState();
             initPlanner();
@@ -424,21 +445,28 @@ function renderSubjectTable(sem, currentWW, container) {
     }
 }
 
+function cell(id, html, color, note) {
+}
+
 // Save value
 function saveCell(id, html, color, note) {
     const sem = getActiveSemester();
+
     sem.schedule[id] = { 
         text: html || "",
         class: color || "",
         note: note || ""
     };
+
     saveState();
 }
 
 // Calculate the relative week
 function calculateWW(start) {
-    if (!start) return -1;
+    if (!start) 
+        return -1;
     const diff = Math.floor((new Date() - new Date(start)) / (1000*60*60*24*7));
+
     return (diff >= 0 && diff < totalWeeks) ? diff + 1 : -1;
 }
 
@@ -467,11 +495,15 @@ function addDragListeners(el, type, idx) {
 
         const sIdx = parseInt(e.dataTransfer.getData("idx"));
         
-        if (e.dataTransfer.getData("type") !== type) return;
+        if (e.dataTransfer.getData("type") !== type) 
+            return;
 
         const list = type === 'folder' ? getActiveSemester().folders : planner.semesters;
         const item = list.splice(sIdx, 1)[0];
         list.splice(idx, 0, item);
-        saveState(); type === 'folder' ? initPlanner() : renderDashboard();
+
+        saveState();
+
+        type === 'folder' ? initPlanner() : renderDashboard();
     };
 }
