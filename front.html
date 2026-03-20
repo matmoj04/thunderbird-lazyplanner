@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Academic Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  
+  <div id="dashboardView" class="view">
+    <div class="dashboard-header">
+      <h1>My Semesters</h1>
+      <button class="icon-btn" id="editDashBtn"><span class="nf">&#xf013;</span> Edit</button>
+    </div>
+    <div id="semesterGrid" class="semester-grid"></div>
+  </div>
+
+  <div id="plannerView" class="view hidden">
+    <div class="toolbar">
+      <div class="nav-group">
+        <button class="icon-btn" id="backToDash"><span class="nf">&#xf060;</span></button>
+        <div class="tab-container" id="tabBar"></div>
+        <button class="icon-btn" id="newTabBtn" title="Add Folder"><span class="nf">&#xf067;</span></button>
+      </div>
+      
+      <div class="date-settings">
+          <span id="activeSemesterTitle"></span>
+          <span class="date-label">Start date:</span>
+          <input type="date" id="startDatePicker">
+          <button class="icon-btn" id="editPlannerBtn"><span class="nf">&#xf013;</span> Edit</button>
+      </div>
+    </div>
+
+    <div id="tablesContainer"></div>
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
