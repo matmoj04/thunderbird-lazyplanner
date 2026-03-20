@@ -26,7 +26,7 @@
   },
 
   "browser_specific_settings": {
-    "gecko": { "id": "nord-planner@example.com" }
+    "gecko": { "id": "nord-planner@local-dev.com" }
   },
 
   "web_accessible_resources": [
