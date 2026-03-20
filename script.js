@@ -63,7 +63,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("importFile").onchange = (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) 
+            return;
 
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -204,6 +205,7 @@ function renderDashboard() {
 function openSemester(id) {
     planner.activeSemId = id;
     const sem = getActiveSemester();
+
     planner.activeTab = sem.folders[0] || "";
     document.getElementById("dashboardView").classList.add("hidden");
     document.getElementById("plannerView").classList.remove("hidden");
@@ -215,6 +217,7 @@ function initPlanner() {
     const tabBar = document.getElementById("tabBar");
     const container = document.getElementById("tablesContainer");
     const plannerView = document.getElementById("plannerView");
+
     tabBar.innerHTML = ""; 
     container.innerHTML = "";
     
@@ -262,6 +265,7 @@ function initPlanner() {
 
         textSpan.onblur = () => {
             const newName = textSpan.textContent.trim();
+
             if (newName && newName !== sem.folders[idx]) {
                 const oldName = sem.folders[idx];
                 sem.subjects[newName] = sem.subjects[oldName] || [];
@@ -293,7 +297,6 @@ function renderSubjectTable(sem, currentWW, container) {
     // Header
     let html = `<thead><tr><th class="col-subject">Predmet</th><th class="col-abbr">Skratka</th>`;
     
-    // Weaks
     for (let i=1; i<=totalWeeks; i++) 
         html += `<th class="${i===currentWW?'current-week-col':''}">WW${i}</th>`;
     html += `</tr></thead><tbody id="subBody"></tbody>`;
@@ -337,16 +340,24 @@ function renderSubjectTable(sem, currentWW, container) {
         for(let w = 1; w <= totalWeeks; w++) {
             const td = document.createElement("td");
             const id = `${sem.id}-${planner.activeTab}-${sIdx}-${w}`;
-            const data = sem.schedule[id] || {text:"", note:""};
+            const data = sem.schedule[id] || {text:"", class:"", note:""};
 
-            td.innerText = data.text;
-            if(data.note) {
-                td.title = data.note;
-                td.classList.add("note-indicator");
+            td.innerHTML = data.text || "";
+
+            if (data.class) {
+                td.className = data.class;
             }
             
-            if(w === currentWW) 
+            if (data.note) {
+                td.title = data.note;
+                // Ensures that the corner is there
+                td.classList.add("note-indicator");
+            }
+
+            //Changes the coloring 
+            if(w === currentWW) {
                 td.classList.add("current-week-col");
+            }
 
             // Shuffle the icons on click
             td.onclick = () => {
@@ -354,22 +365,40 @@ function renderSubjectTable(sem, currentWW, container) {
                 if(isEditMode)
                     return;
                 
-                // Find current icon index by comparing HTML
+                // TODO: Change for item picker                
+                // Find current icon index by comparing HTML, and then find next
                 let currentIdx = iconData.findIndex(icon => icon.html === td.innerHTML);
                 let nextIdx = (currentIdx + 1) % iconData.length;
                 let nextIcon = iconData[nextIdx];
 
-                // Update the UI and apply color
                 td.innerHTML = nextIcon.html;
-                td.className = nextIcon.class;
 
-                // Save both the HTML and the Class to storage
-                sem.schedule[id] = { 
-                    text: nextIcon.html, 
-                    class: nextIcon.class 
-                };
-                saveState();
+                const allIconClasses = iconData.map(i => i.class).filter(c => c !== "");
+                td.classList.remove(...allIconClasses);
+
+                if (nextIcon.class) {
+                    td.classList.add(nextIcon.class);
+                }
+
+                saveCell(id, td.innerHTML, td.className, td.title);
             };
+
+            // Add comment to cell
+            td.oncontextmenu = (e) => {
+                e.preventDefault();
+                
+                if(isEditMode) 
+                    return;
+                
+                const note = prompt("Comment:", td.title || "");
+                
+                if(note !== null) {
+                    td.title = note;
+                    note ? td.classList.add("note-indicator") : td.classList.remove("note-indicator");
+                    saveCell(id, td.innerHTML, td.className, td.title);
+                }
+            };
+
             row.appendChild(td);
         }
         tbody.appendChild(row);
@@ -396,9 +425,13 @@ function renderSubjectTable(sem, currentWW, container) {
 }
 
 // Save value
-function saveCell(id, text, note) {
+function saveCell(id, html, color, note) {
     const sem = getActiveSemester();
-    sem.schedule[id] = { text, note: note || "" };
+    sem.schedule[id] = { 
+        text: html || "",
+        class: color || "",
+        note: note || ""
+    };
     saveState();
 }
 
