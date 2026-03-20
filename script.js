@@ -6,21 +6,38 @@
  *  matmoj04    3.2025
  */
 
+const chrome = window.chrome || window.browser;
+
 const totalWeeks = 14;
-const icons = ["", "󰄱", "󰄵", "󰅘", "󰤌", "󰄮"]; 
+const iconData = [
+    { html: "", class: "" },
+    { html: '<i>󰄱</i>', class: "icon-empty" },
+    { html: '<i>󰄵</i>', class: "icon-check" },
+    { html: '<i>󰅘</i>', class: "icon-close" },
+    { html: '<i>󰤌</i>', class: "icon-notes" },
+    { html: '<i>󰄮</i>', class: "icon-homew" }
+];
 let planner = { semesters: [], activeSemId: null, activeTab: null };
 let isEditMode = false;
 
 // load saved data from local storage of thunderbird
 async function loadState() {
-    const stored = await chrome.storage.local.get("plannerPro");
-
-    if (stored.plannerPro) 
-        planner = stored.plannerPro;
+    try {
+        const stored = await chrome.storage.local.get("plannerPro");
+        if (stored.plannerPro) {
+            planner = stored.plannerPro;
+        }
+    } catch (e) {
+        console.error("Storage failed:", e);
+    }
 }
 
 async function saveState() {
-    await chrome.storage.local.set({ plannerPro: planner });
+    try {
+        await chrome.storage.local.set({ plannerPro: planner });
+    } catch (e) {
+        console.error("Save failed:", e);
+    }
 }
     
 // buttons
@@ -232,12 +249,14 @@ function initPlanner() {
 function renderSubjectTable(sem, currentWW, container) {
     const table = document.createElement("table");
 
-    //Header
+    // Header
     let html = `<thead><tr><th class="col-subject">Predmet</th><th class="col-abbr">Skratka</th>`;
-    //Weaks
-    for(let i=1; i<=totalWeeks; i++) 
+    
+    // Weaks
+    for (let i=1; i<=totalWeeks; i++) 
         html += `<th class="${i===currentWW?'current-week-col':''}">WW${i}</th>`;
     html += `</tr></thead><tbody id="subBody"></tbody>`;
+    
     table.innerHTML = html;
     container.appendChild(table);
 
@@ -288,26 +307,27 @@ function renderSubjectTable(sem, currentWW, container) {
             if(w === currentWW) 
                 td.classList.add("current-week-col");
 
+            // Shuffle the icons on click
             td.onclick = () => {
-                if(isEditMode) return;
-                let i = icons.indexOf(td.innerText);
-                td.innerText = icons[(i + 1) % icons.length];
-                saveCell(id, td.innerText, td.title);
-            };
-
-            td.oncontextmenu = (e) => {
-                e.preventDefault();
-                
-                if(isEditMode) 
+                // Disable the cell while editing
+                if(isEditMode)
                     return;
                 
-                const note = prompt("Comment:", td.title || "");
-                
-                if(note !== null) {
-                    td.title = note;
-                    note ? td.classList.add("note-indicator") : td.classList.remove("note-indicator");
-                    saveCell(id, td.innerText, td.title);
-                }
+                // Find current icon index by comparing HTML
+                let currentIdx = iconData.findIndex(icon => icon.html === td.innerHTML);
+                let nextIdx = (currentIdx + 1) % iconData.length;
+                let nextIcon = iconData[nextIdx];
+
+                // Update the UI and apply color
+                td.innerHTML = nextIcon.html;
+                td.className = nextIcon.class;
+
+                // Save both the HTML and the Class to storage
+                sem.schedule[id] = { 
+                    text: nextIcon.html, 
+                    class: nextIcon.class 
+                };
+                saveState();
             };
             row.appendChild(td);
         }

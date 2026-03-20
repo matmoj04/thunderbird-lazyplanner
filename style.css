@@ -225,6 +225,33 @@ th {
   text-align: center;
 }
 
+/* Icon Coloring */
+.icon-check {
+    color: #A3BE8C !important;
+}
+
+.icon-close {
+    color: #BF616A !important;
+}
+
+.icon-notes {
+    color: #EBCB8B !important;
+}
+
+.icon-homew {
+    color: #f06b2e !important;
+}
+
+/* Optional: Make the icons slightly larger and glow when active */
+td i {
+    font-size: 1.1em;
+    transition: transform 0.1s ease;
+}
+
+td:active i {
+    transform: scale(1.3);
+}
+
 /* Dynamic Subject Column */
 .col-subject, .col-abbr { 
   color: var(--nord8); 
