@@ -56,6 +56,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     a.click();
     };
 
+    // Data import
+    document.getElementById("importBtn").onclick = () => {
+        document.getElementById("importFile").click();
+    };
+
+    document.getElementById("importFile").onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                // Basic validation: check if it has the semesters array
+                if (importedData.semesters) {
+                    planner = importedData;
+                    await saveState();
+                    renderDashboard();
+                    alert("Data imported successfully!");
+                } else {
+                    alert("Invalid backup file format.");
+                }
+            } catch (err) {
+                alert("Error reading file: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+
     //edit buttons
     document.getElementById("editDashBtn").onclick = (e) => {
         isEditMode = !isEditMode;

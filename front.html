@@ -12,8 +12,11 @@
   <div id="dashboardView" class="view">
     <div class="dashboard-header">
       <h1>My Semesters</h1>
-      <button class="icon-btn" id="editDashBtn"><span class="nf">&#xf013;</span> Edit</button>
       <button class="icon-btn" id="exportBtn" title="Export Data"><span class="nf">&#xf019;</span></button>
+      <button class="icon-btn" id="importBtn" title="Import Data"><span class="nf">&#xf0b25;</span></button>
+      <input type="file" id="importFile" style="display:none" accept=".json">
+
+      <button class="icon-btn" id="editDashBtn"><span class="nf">&#xf013;</span> Edit</button>
     </div>
     <div id="semesterGrid" class="semester-grid"></div>
   </div>
