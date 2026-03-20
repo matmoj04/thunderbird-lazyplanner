@@ -1,12 +1,10 @@
 /*
- *  script.js   v1.1
+ *  script.js   v1-alpha.0.0
  * 
- *  Script for addon.
+ *  Script for TB addon.
  * 
  *  matmoj04    3.2025
  */
-
-const chrome = window.chrome || window.browser;
 
 const totalWeeks = 14;
 const iconData = [
@@ -20,143 +18,8 @@ const iconData = [
 let planner = { semesters: [], activeSemId: null, activeTab: null };
 let isEditMode = false;
 
-// load saved data from local storage of thunderbird
-async function loadState() {
-    try {
-        const stored = await chrome.storage.local.get("plannerJSON");
-        if (stored.plannerJSON)
-            planner = stored.plannerJSON;
-    } catch (e) {
-        console.error("Storage failed:", e);
-    }
-}
-
-async function saveState() {
-    try {
-        await chrome.storage.local.set({ plannerJSON: planner });
-    } catch (e) {
-        console.error("Save failed:", e);
-    }
-}
-    
-// buttons
-document.addEventListener("DOMContentLoaded", async () => {
-    await loadState();
-    renderDashboard();
-
-    // Data export
-    document.getElementById("exportBtn").onclick = async () => {
-        const data = await chrome.storage.local.get("plannerJSON");
-        const blob = new Blob([JSON.stringify(data.plannerJSON, null, 2)], {type : 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-
-        a.href = url;
-        a.download = `backup_${Date.now().toString()}.json`;
-
-        a.click();
-    };
-
-    // Data import
-    document.getElementById("importBtn").onclick = () => {
-        document.getElementById("importFile").click();
-    };
-
-    document.getElementById("importFile").onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) 
-            return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const importedData = JSON.parse(event.target.result);
-                
-                // If it has the cards and if its an array
-                if (importedData.semesters && Array.isArray(importedData.semesters)) {
-                    let addedCount = 0;
-                    let skippedCount = 0;
-
-                    importedData.semesters.forEach(newSem => {
-                        // Check if a semester with this ID already exists in our current planner
-                        const exists = planner.semesters.some(existingSem => existingSem.id === newSem.id);
-                        
-                        if (!exists) {
-                            planner.semesters.push(newSem);
-                            addedCount++;
-                        } else {
-                            skippedCount++;
-                        }
-                    });
-
-                    await saveState();
-                    renderDashboard();
-                    
-                    alert(`Import Complete!\nAdded: ${addedCount} new semesters\nSkipped: ${skippedCount} duplicates`);
-                } else {
-                    alert("Invalid backup file format.");
-                }
-            } catch (err) {
-                alert("Error reading file: " + err.message);
-            }
-            // Reset the input so you can import the same file again if needed
-            e.target.value = ""; 
-        };
-        reader.readAsText(file);
-    };
-
-    //edit buttons
-    document.getElementById("editDashBtn").onclick = (e) => {
-        isEditMode = !isEditMode;
-        e.currentTarget.classList.toggle("edit-active", isEditMode);
-        renderDashboard();
-    };
-
-    document.getElementById("editPlannerBtn").onclick = (e) => {
-        isEditMode = !isEditMode;
-        e.currentTarget.classList.toggle("edit-active", isEditMode);
-        initPlanner();
-    };
-
-    //backspace
-    document.getElementById("backToDash").onclick = () => {
-        isEditMode = false;
-
-        document.getElementById("editPlannerBtn").classList.remove("edit-active");
-        document.getElementById("editDashBtn").classList.remove("edit-active");
-        
-        document.getElementById("plannerView").classList.add("hidden");
-        document.getElementById("dashboardView").classList.remove("hidden");
-
-        renderDashboard();
-    };
-
-    //planner
-    document.getElementById("newTabBtn").onclick = () => {
-        const sem = getActiveSemester();
-        const name = "New Folder";
-
-        sem.folders.push(name);
-
-        planner.activeTab = name; // focus new
-
-        saveState(); 
-        initPlanner();
-    };
-
-    document.getElementById("startDatePicker").onchange = (e) => {
-        getActiveSemester().startDate = e.target.value;
-        saveState();
-        initPlanner(); 
-    };
-});
-
-//date assigned to tab
-function getActiveSemester() {
-    return planner.semesters.find(s => s.id === planner.activeSemId);
-}
-
 // Dashboard view
+// TODO: Restructure code
 function renderDashboard() {
     const grid = document.getElementById("semesterGrid");
     const dashView = document.getElementById("dashboardView");
@@ -220,6 +83,7 @@ function renderDashboard() {
     }
 }
 
+// Helper functions
 function openSemester(id) {
     planner.activeSemId = id;
     const sem = getActiveSemester();
@@ -227,10 +91,12 @@ function openSemester(id) {
     planner.activeTab = sem.folders[0] || "";
     document.getElementById("dashboardView").classList.add("hidden");
     document.getElementById("plannerView").classList.remove("hidden");
+    
     initPlanner();
 }
 
-// Table
+// Table view
+// TODO: Restructure code
 function initPlanner() {
     const tabBar = document.getElementById("tabBar");
     const container = document.getElementById("tablesContainer");
@@ -328,32 +194,15 @@ function renderSubjectTable(sem, currentWW, container) {
     // Cells
     subs.forEach((sub, sIdx) => {
         const row = document.createElement("tr");
-        
-        const tdName = document.createElement("td");
-        tdName.className = "col-subject";
-        tdName.textContent = sub.name;
-        tdName.contentEditable = isEditMode;
+        // Name Column
+        row.appendChild(createEditableCell(sub.name, "col-subject", (val) => {
+            sub.name = val;
+        }));
 
-        tdName.onblur = () => {
-            sub.name = tdName.textContent;
-            saveState(); 
-            initPlanner();
-        }; 
-
-        row.appendChild(tdName);
-
-        // Abriviation
-        const tdAbbr = document.createElement("td");
-        tdAbbr.className = "col-abbr";
-        tdAbbr.textContent = sub.abbr;
-        tdAbbr.contentEditable = isEditMode;
-
-        tdAbbr.onblur = () => {
-            sub.abbr = tdAbbr.textContent;
-            saveState();
-        };
-
-        row.appendChild(tdAbbr);
+        // Abbreviation Column
+        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => {
+            sub.abbr = val;
+        }));
         
         // Cells
         for(let w = 1; w <= totalWeeks; w++) {
@@ -368,11 +217,9 @@ function renderSubjectTable(sem, currentWW, container) {
             
             if (data.note) {
                 td.title = data.note;
-                // Ensures that the corner is there
                 td.classList.add("note-indicator");
             }
 
-            //Changes the coloring 
             if(w === currentWW)
                 td.classList.add("current-week-col");
 
@@ -445,10 +292,22 @@ function renderSubjectTable(sem, currentWW, container) {
     }
 }
 
-function cell(id, html, color, note) {
+// Helper functions
+function createEditableCell(text, className, onSave) {
+    const td = document.createElement("td");
+
+    td.className = className;
+    td.textContent = text;
+    td.contentEditable = isEditMode;
+
+    td.onblur = () => {
+        onSave(td.textContent);
+        saveState();
+    };
+
+    return td;
 }
 
-// Save value
 function saveCell(id, html, color, note) {
     const sem = getActiveSemester();
 
@@ -461,7 +320,6 @@ function saveCell(id, html, color, note) {
     saveState();
 }
 
-// Calculate the relative week
 function calculateWW(start) {
     if (!start) 
         return -1;
@@ -470,7 +328,8 @@ function calculateWW(start) {
     return (diff >= 0 && diff < totalWeeks) ? diff + 1 : -1;
 }
 
-// Dragging in dashboard
+// TODO: Look closer at function of the code
+// TODO: Folder drag not working
 function addDragListeners(el, type, idx) {
     el.draggable = isEditMode;
 
