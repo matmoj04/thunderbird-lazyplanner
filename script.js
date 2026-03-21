@@ -35,13 +35,29 @@ function renderDashboard() {
 
         titleSpan.textContent = sem.name;
         titleSpan.contentEditable = isEditMode;
-        titleSpan.onblur = () => { sem.name = titleSpan.textContent; saveState(); };
+
+        titleSpan.onblur = () => { 
+            const cleanName = titleSpan.textContent.trim();
+            sem.name = cleanName;
+            titleSpan.textContent = cleanName;
+
+            saveState();
+        };
+
+        titleSpan.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                titleSpan.blur();
+            }
+        };
+
         card.appendChild(titleSpan);
         
         if (!isEditMode) 
             card.onclick = () => openSemester(sem.id);
 
         // Delete item
+        // TODO: Make button func for these type of operations
         const del = document.createElement("button");
         del.className = "delete-btn";
         del.innerHTML = '<span class="nf">\uf00d</span>';
