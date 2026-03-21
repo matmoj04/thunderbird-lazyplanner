@@ -158,6 +158,7 @@ function initPlanner() {
                 sem.subjects[newName] = sem.subjects[oldName] || [];
                 delete sem.subjects[oldName];
 
+                // Copy data
                 if (sem.schedule) {
                     Object.keys(sem.schedule).forEach(oldKey => {
                         const parts = oldKey.split('-'); 
@@ -220,8 +221,12 @@ function renderSubjectTable(sem, currentWW, container) {
             const cleanName = val.trim();
             sub.name = cleanName;
 
+            // Auto asign abbriviation
             if (cleanName.includes(" ")) {
-                sub.abbr = cleanName.split(" ")[0].slice(-3).toUpperCase();
+                const subCode = cleanName.split(" ")[0];
+                const subAbbr = subCode.slice(5);
+
+                sub.abbr = subAbbr.toUpperCase();
                 
                 saveState();
                 initPlanner(); 
