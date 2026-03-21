@@ -194,9 +194,18 @@ function renderSubjectTable(sem, currentWW, container) {
     // Cells
     subs.forEach((sub, sIdx) => {
         const row = document.createElement("tr");
+
         // Name Column
         const tdName = createEditableCell(sub.name, "col-subject", (val) => {
-            sub.name = val.trim();;
+            const cleanName = val.trim();
+            sub.name = cleanName;
+
+            if (cleanName.includes(" ")) {
+                sub.abbr = cleanName.split(" ")[0].slice(-3).toUpperCase();
+                
+                saveState();
+                initPlanner(); 
+            }
         });
 
         // Delete row

@@ -205,11 +205,16 @@ body {
 }
 
 table {
-  table-layout: auto;
   border-collapse: collapse;
   background-color: var(--nord1);
   width: 100%;
 }
+
+#subBody td {
+    height: 26px;
+    vertical-align: middle; /* Ensures text and icons stay centered */
+}
+
 
 th, td {
   border: 1px solid var(--nord3);
@@ -329,7 +334,6 @@ th.current-week-col {
 }
 
 /* Delete row */
-
 .edit-active-planner th.col-subject {
     cursor: default;
 }
@@ -343,6 +347,7 @@ th.current-week-col {
     content: "\f014"; 
     font-family: "Symbols Nerd Font";
     position: absolute;
+    font-style: normal !important;
     left: 6px;
 
     top: 0;
