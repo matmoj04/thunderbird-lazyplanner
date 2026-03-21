@@ -70,7 +70,7 @@ function renderDashboard() {
                 id: Date.now().toString(), 
                 name: "New Semester", 
                 startDate: "", 
-                folders: ["Protokoly", "Cvičenia", "Testy, Odovzdania", "Protokoly, Príprava"], 
+                folders: ["Prednášky", "Cvičenia", "Testy, Odovzdania", "Protokoly, Príprava"], 
                 subjects: {}, 
                 schedule: {} 
             });
@@ -119,6 +119,7 @@ function initPlanner() {
         const textSpan = document.createElement("span");
         textSpan.textContent = cat;
         textSpan.contentEditable = isEditMode;
+
         tab.appendChild(textSpan);
 
         // Delete Button for Tab
@@ -147,15 +148,33 @@ function initPlanner() {
             tab.appendChild(delTab);
         }
 
+        // Rename folder
         textSpan.onblur = () => {
             const newName = textSpan.textContent.trim();
 
             if (newName && newName !== sem.folders[idx]) {
                 const oldName = sem.folders[idx];
+
                 sem.subjects[newName] = sem.subjects[oldName] || [];
                 delete sem.subjects[oldName];
+
+                if (sem.schedule) {
+                    Object.keys(sem.schedule).forEach(oldKey => {
+                        const parts = oldKey.split('-'); 
+                        
+                        if (parts[1] === oldName) {
+                            parts[1] = newName;
+                            const newKey = parts.join('-');
+                            
+                            sem.schedule[newKey] = sem.schedule[oldKey];
+                            delete sem.schedule[oldKey];
+                        }
+                    });
+                }
+
                 sem.folders[idx] = newName;
                 planner.activeTab = newName;
+
                 saveState();
             }
         };
@@ -163,6 +182,7 @@ function initPlanner() {
         tab.onclick = () => {
             if (!isEditMode) {
                 planner.activeTab = cat;
+
                 initPlanner();
             }
         };
@@ -230,9 +250,7 @@ function renderSubjectTable(sem, currentWW, container) {
         row.appendChild(tdName);
 
         // Abbreviation Column
-        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => {
-            sub.abbr = val.trim().toUpperCase();
-        }));
+        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => sub.abbr = val.trim().toUpperCase() ));
         
         // Cells
         for(let w = 1; w <= totalWeeks; w++) {
