@@ -6,11 +6,11 @@
  *  matmoj04    3.2025
  */
 
-const chrome = window.chrome || window.browser;
+const messenger = window.messenger || window.browser;
 
 async function loadState() {
     try {
-        const stored = await chrome.storage.local.get("plannerJSON");
+        const stored = await messenger.storage.local.get("plannerJSON");
         if (stored.plannerJSON)
             planner = stored.plannerJSON;
     } catch (e) {
@@ -20,7 +20,7 @@ async function loadState() {
 
 async function saveState() {
     try {
-        await chrome.storage.local.set({ plannerJSON: planner });
+        await messenger.storage.local.set({ plannerJSON: planner });
     } catch (e) {
         console.error("Save failed:", e);
     }
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (isEditMode)
             return;
 
-        const data = await chrome.storage.local.get("plannerJSON");
+        const data = await messenger.storage.local.get("plannerJSON");
         const blob = new Blob([JSON.stringify(data.plannerJSON, null, 2)], {type : 'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
