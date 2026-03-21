@@ -195,13 +195,34 @@ function renderSubjectTable(sem, currentWW, container) {
     subs.forEach((sub, sIdx) => {
         const row = document.createElement("tr");
         // Name Column
-        row.appendChild(createEditableCell(sub.name, "col-subject", (val) => {
-            sub.name = val;
-        }));
+        const tdName = createEditableCell(sub.name, "col-subject", (val) => {
+            sub.name = val.trim();;
+        });
+
+        // Delete row
+        tdName.onclick = (e) => {
+            if (isEditMode) {
+                // Check if the user clicked the far-left side (where the icon is)
+                // 30px matches the padding we set in CSS
+                if (e.offsetX < 30) { 
+                    e.preventDefault();
+                    e.stopPropagation(); // Stop the text-editor from opening
+                    
+                    if (confirm(`Delete subject "${sub.name || 'this row'}"?`)) {
+                        sem.subjects[planner.activeTab].splice(sIdx, 1);
+                        saveState();
+                        initPlanner();
+                    }
+                    return false;
+                }
+            }
+        };
+
+        row.appendChild(tdName);
 
         // Abbreviation Column
         row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => {
-            sub.abbr = val;
+            sub.abbr = val.trim().toUpperCase();
         }));
         
         // Cells
@@ -326,6 +347,25 @@ function calculateWW(start) {
     const diff = Math.floor((new Date() - new Date(start)) / (1000*60*60*24*7));
 
     return (diff >= 0 && diff < totalWeeks) ? diff + 1 : -1;
+}
+
+function deleteSubject(sIdx) {
+    const sem = getActiveSemester();
+    const activeTab = planner.activeTab;
+
+    // Remove the subject from the array
+    sem.subjects[activeTab].splice(sIdx, 1);
+
+    // CRITICAL: Clean up the schedule data for this row 
+    // to prevent "ghost" data if a new row is added later
+    Object.keys(sem.schedule).forEach(key => {
+        if (key.includes(`-${activeTab}-${sIdx}-`)) {
+            delete sem.schedule[key];
+        }
+    });
+
+    saveState();
+    initPlanner();
 }
 
 // TODO: Look closer at function of the code

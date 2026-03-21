@@ -88,15 +88,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         reader.onload = async (event) => {
             try {
-                const importedData = JSON.parse(event.target.result);
+                const importedData = JSON.parse(event.target.result, (key, value) => {
+                    return (typeof value === 'string') ? value.trim() : value;
+                });
                 
-                // If it has the cards and if its an array
                 if (importedData.semesters && Array.isArray(importedData.semesters)) {
                     let addedCount = 0;
                     let skippedCount = 0;
 
                     importedData.semesters.forEach(newSem => {
-                        // Check if a semester with this ID already exists in our current planner
                         const exists = planner.semesters.some(existingSem => existingSem.id === newSem.id);
                         
                         if (!exists) {
@@ -117,7 +117,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             } catch (err) {
                 alert("Error reading file: " + err.message);
             }
-            // Reset the input so you can import the same file again if needed
             e.target.value = ""; 
         };
         
@@ -127,7 +126,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Edit buttons
     document.getElementById("editDashBtn").onclick = (e) => toggleEdit(e.currentTarget, renderDashboard);
 
-    document.getElementById("editPlannerBtn").onclick = (e) => toggleEdit(e.currentTarget, initPlanner);
+    document.getElementById("editPlannerBtn").onclick = (e) => {
+        isEditMode = !isEditMode;
+        e.currentTarget.classList.toggle("edit-active", isEditMode);
+        
+        // This allows the CSS hover effects to work
+        document.getElementById("plannerView").classList.toggle("edit-active-planner", isEditMode);
+        
+        initPlanner();
+    };
 
     // Backspace
     document.getElementById("backToDash").onclick = () => showView("dashboardView");
