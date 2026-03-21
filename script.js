@@ -179,9 +179,9 @@ function renderSubjectTable(sem, currentWW, container) {
     const table = document.createElement("table");
 
     // Header render
-    let html = `<thead><tr><th class="col-subject">Predmet</th><th class="col-abbr">Skratka</th>`;
+    let html = `<thead><tr><th class="col-subject">Subject</th><th class="col-abbr">Abbr.</th>`;
     
-    for (let i = 1; i <= totalWeeks; i++) 
+    for (let i = 1; i <= totalWeeks; i++)
         html += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
     html += `</tr></thead><tbody id="subBody"></tbody>`;
     
