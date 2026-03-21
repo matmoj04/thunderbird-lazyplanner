@@ -35,13 +35,29 @@ function renderDashboard() {
 
         titleSpan.textContent = sem.name;
         titleSpan.contentEditable = isEditMode;
-        titleSpan.onblur = () => { sem.name = titleSpan.textContent; saveState(); };
+
+        titleSpan.onblur = () => { 
+            const cleanName = titleSpan.textContent.trim();
+            sem.name = cleanName;
+            titleSpan.textContent = cleanName;
+
+            saveState();
+        };
+
+        titleSpan.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                titleSpan.blur();
+            }
+        };
+
         card.appendChild(titleSpan);
         
         if (!isEditMode) 
             card.onclick = () => openSemester(sem.id);
 
         // Delete item
+        // TODO: Make button func for these type of operations
         const del = document.createElement("button");
         del.className = "delete-btn";
         del.innerHTML = '<span class="nf">\uf00d</span>';
@@ -70,7 +86,7 @@ function renderDashboard() {
                 id: Date.now().toString(), 
                 name: "New Semester", 
                 startDate: "", 
-                folders: ["Protokoly", "Cvičenia", "Testy, Odovzdania", "Protokoly, Príprava"], 
+                folders: ["Prednášky", "Cvičenia", "Testy, Odovzdania", "Protokoly, Príprava"], 
                 subjects: {}, 
                 schedule: {} 
             });
@@ -119,6 +135,7 @@ function initPlanner() {
         const textSpan = document.createElement("span");
         textSpan.textContent = cat;
         textSpan.contentEditable = isEditMode;
+
         tab.appendChild(textSpan);
 
         // Delete Button for Tab
@@ -147,15 +164,34 @@ function initPlanner() {
             tab.appendChild(delTab);
         }
 
+        // Rename folder
         textSpan.onblur = () => {
             const newName = textSpan.textContent.trim();
 
             if (newName && newName !== sem.folders[idx]) {
                 const oldName = sem.folders[idx];
+
                 sem.subjects[newName] = sem.subjects[oldName] || [];
                 delete sem.subjects[oldName];
+
+                // Copy data
+                if (sem.schedule) {
+                    Object.keys(sem.schedule).forEach(oldKey => {
+                        const parts = oldKey.split('-'); 
+                        
+                        if (parts[1] === oldName) {
+                            parts[1] = newName;
+                            const newKey = parts.join('-');
+                            
+                            sem.schedule[newKey] = sem.schedule[oldKey];
+                            delete sem.schedule[oldKey];
+                        }
+                    });
+                }
+
                 sem.folders[idx] = newName;
                 planner.activeTab = newName;
+
                 saveState();
             }
         };
@@ -163,6 +199,7 @@ function initPlanner() {
         tab.onclick = () => {
             if (!isEditMode) {
                 planner.activeTab = cat;
+
                 initPlanner();
             }
         };
@@ -179,9 +216,9 @@ function renderSubjectTable(sem, currentWW, container) {
     const table = document.createElement("table");
 
     // Header render
-    let html = `<thead><tr><th class="col-subject">Predmet</th><th class="col-abbr">Skratka</th>`;
+    let html = `<thead><tr><th class="col-subject">Subject</th><th class="col-abbr">Abbr.</th>`;
     
-    for (let i = 1; i <= totalWeeks; i++) 
+    for (let i = 1; i <= totalWeeks; i++)
         html += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
     html += `</tr></thead><tbody id="subBody"></tbody>`;
     
@@ -194,9 +231,22 @@ function renderSubjectTable(sem, currentWW, container) {
     // Cells
     subs.forEach((sub, sIdx) => {
         const row = document.createElement("tr");
+
         // Name Column
         const tdName = createEditableCell(sub.name, "col-subject", (val) => {
-            sub.name = val.trim();;
+            const cleanName = val.trim();
+            sub.name = cleanName;
+
+            // Auto asign abbriviation
+            if (cleanName.includes(" ")) {
+                const subCode = cleanName.split(" ")[0];
+                const subAbbr = subCode.slice(5);
+
+                sub.abbr = subAbbr.toUpperCase();
+                
+                saveState();
+                initPlanner(); 
+            }
         });
 
         // Delete row
@@ -221,9 +271,7 @@ function renderSubjectTable(sem, currentWW, container) {
         row.appendChild(tdName);
 
         // Abbreviation Column
-        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => {
-            sub.abbr = val.trim().toUpperCase();
-        }));
+        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => sub.abbr = val.trim().toUpperCase() ));
         
         // Cells
         for(let w = 1; w <= totalWeeks; w++) {
