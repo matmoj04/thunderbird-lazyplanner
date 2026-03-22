@@ -332,8 +332,9 @@ th.current-week-col {
   background-color: rgba(191, 97, 106, 0.1);
 }
 
+/* Add row button */
 .add-row-btn {
-  display: flex;             /* Use flex to center icon and text inside button */
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -384,4 +385,54 @@ th.current-week-col {
 
 .edit-active-planner td.col-subject:hover::before:hover {
     transform: scale(1.2);
+}
+
+/*Legend style */
+.legend-container {
+    margin: 1px 20px;
+    background: var(--nord1);
+    border: 1px solid var(--nord3);
+    border-radius: 8px;
+    overflow: hidden;
+    width: fit-content;
+}
+
+.legend-header {
+    padding: 10px 15px;
+    background: var(--nord2);
+    cursor: pointer;
+    font-size: 0.9em;
+    color: var(--nord8);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.legend-content {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.legend-content.hidden {
+    display: none;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85em;
+    color: var(--nord4);
+}
+
+.legend-item span {
+    font-family: "MesloLGM Nerd Font Propo";
+    font-size: 1.2em;
+}
+
+.legend-header:hover {
+    background: var(--nord3);
+    color: var(--nord6);
 }
