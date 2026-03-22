@@ -3,39 +3,57 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Academic Planner</title>
+  <title>LazyPlanner</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   
-  <div id="dashboardView" class="view">
+  <div id="dashboardView" class="view-container">
     <div class="dashboard-header">
       <h1>My Semesters</h1>
-      <button class="icon-btn" id="editDashBtn"><span class="nf">&#xf013;</span> Edit</button>
+      <button class="icon-btn" id="exportBtn" title="Export Data"><i class="nf">&#xf019;</i></button>
+      <button class="icon-btn" id="importBtn" title="Import Data"><i class="nf">&#xf0b25;</i></button>
+      <input type="file" id="importFile" style="display:none" accept=".json">
+
+      <button class="icon-btn" id="editDashBtn"><i class="nf">&#xf013;</i> Edit</button>
     </div>
     <div id="semesterGrid" class="semester-grid"></div>
   </div>
 
-  <div id="plannerView" class="view hidden">
+  <div id="plannerView" class="view-container hidden">
     <div class="toolbar">
       <div class="nav-group">
-        <button class="icon-btn" id="backToDash"><span class="nf">&#xf060;</span></button>
+        <button class="icon-btn" id="backToDash"><i class="nf">&#xf060;</i></button>
         <div class="tab-container" id="tabBar"></div>
-        <button class="icon-btn" id="newTabBtn" title="Add Folder"><span class="nf">&#xf067;</span></button>
+        <button class="icon-btn" id="newFolder" title="Add Folder"><i class="nf">&#xf067;</i></button>
       </div>
       
       <div class="date-settings">
           <span id="activeSemesterTitle"></span>
           <span class="date-label">Start date:</span>
           <input type="date" id="startDatePicker">
-          <button class="icon-btn" id="editPlannerBtn"><span class="nf">&#xf013;</span> Edit</button>
+          <button class="icon-btn" id="editPlannerBtn"><i class="nf">&#xf013;</i> Edit</button>
       </div>
     </div>
 
     <div id="tablesContainer"></div>
+
+    <div class="legend-container">
+        <div class="legend-header"><i class="nf">&#xf129;</i> Icon Meanings</div>
+        <div id="legendContent" class="legend-content hidden">
+            <div class="legend-item"><span class="icon-empty">󰄱</span> To be done / Planned</div>
+            <div class="legend-item"><span class="icon-check">󰄵</span> Completed</div>
+            <div class="legend-item"><span class="icon-close">󰅘</span> Missed / Cancelled</div>
+            <div class="legend-item"><span class="icon-notes">󰤌</span> Check again / later</div>
+            <div class="legend-item"><span class="icon-homew">󰄮</span> Homework / Assignment</div>
+        </div>
+    </div>
+
   </div>
 
+  <script src="main.js"></script>
   <script src="script.js"></script>
 
 </body>
