@@ -49,6 +49,13 @@ function getActiveSemester() {
     return planner.semesters.find(s => s.id === planner.activeSemId);
 }
 
+const legendHeader = document.querySelector('.legend-header');
+if (legendHeader) {
+    legendHeader.addEventListener('click', () => {
+        document.getElementById("legendContent").classList.toggle("hidden");
+    });
+}
+
 // Buttons
 document.addEventListener("DOMContentLoaded", async () => {
     await loadState();
