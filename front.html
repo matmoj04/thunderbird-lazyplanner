@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-<html lang="en sk"></html>
-<html>
-
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>LazyPlanner</title>
@@ -14,10 +12,10 @@
     <header class="dashboard-header">
       <h1>My Semesters</h1>
       <div class="header-controls">
-        <button class="icon-btn" id="exportBtn" title="Export Data"><i class="nf">&#xf019;</i></button>
-        <button class="icon-btn" id="importBtn" title="Import Data"><i class="nf">&#xf0b25;</i></button>
+        <button class="icon-btn" id="exportBtn" title="Export Data"><icon class="nf">&#xf019;</icon></button>
+        <button class="icon-btn" id="importBtn" title="Import Data"><icon class="nf">&#xf0b25;</icon></button>
         <input type="file" id="importFile" style="display:none" accept=".json">
-        <button class="icon-btn" id="editDashBtn"><i class="nf">&#xf013;</i> Edit</button>
+        <button class="icon-btn" id="editDashBtn"><icon class="nf">&#xf013;</icon> Edit</button>
       </div>
     </header>
     <div id="semesterGrid" class="semester-grid"></div>
@@ -26,23 +24,23 @@
   <div id="plannerView" class="view-container hidden">
     <header class="toolbar">
       <div class="nav-group">
-        <button class="icon-btn" id="backToDash"><i class="nf">&#xf060;</i></button>
+        <button class="icon-btn" id="backToDash"><icon class="nf">&#xf060;</icon></button>
         <div class="tab-container" id="tabBar"></div>
-        <button class="icon-btn" id="newFolder" title="Add Folder"><i class="nf">&#xf067;</i></button>
+        <button class="icon-btn" id="newFolder" title="Add Folder"><icon class="nf">&#xf067;</icon></button>
       </div>
       
       <div class="date-settings">
           <span id="activeSemesterTitle"></span>
           <span class="date-label">Start date:</span>
           <input type="date" id="startDatePicker">
-          <button class="icon-btn" id="editPlannerBtn"><i class="nf">&#xf013;</i> Edit</button>
+          <button class="icon-btn" id="editPlannerBtn"><icon class="nf">&#xf013;</icon> Edit</button>
       </div>
     </header>
 
     <div id="tablesContainer"></div>
 
     <footer class="legend-container">
-        <div id="legendToggle" class="legend-header"><i class="nf">&#xf129;</i> Icon Meanings</div>
+        <div id="legendToggle" class="legend-header"><icon class="nf">&#xf129;</icon> Icon Meanings</div>
         <div id="legendContent" class="legend-content hidden">
             <div class="legend-item"><span class="icon-empty">󰄱</span> To be done / Planned</div>
             <div class="legend-item"><span class="icon-check">󰄵</span> Completed</div>

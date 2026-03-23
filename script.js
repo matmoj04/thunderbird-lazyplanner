@@ -9,11 +9,11 @@
 const WEEKS_COUNT = 14;
 const ICON_SET = [
     { html: "", class: "" },
-    { html: '<i>󰄱</i>', class: "icon-empty" },
-    { html: '<i>󰄵</i>', class: "icon-check" },
-    { html: '<i>󰅘</i>', class: "icon-close" },
-    { html: '<i>󰤌</i>', class: "icon-notes" },
-    { html: '<i>󰄮</i>', class: "icon-homew" }
+    { html: '<icon>󰄱</icon>', class: "icon-empty" },
+    { html: '<icon>󰄵</icon>', class: "icon-check" },
+    { html: '<icon>󰅘</icon>', class: "icon-close" },
+    { html: '<icon>󰤌</icon>', class: "icon-notes" },
+    { html: '<icon>󰄮</icon>', class: "icon-homew" }
 ];
 
 
@@ -80,7 +80,7 @@ function createCard(sem, idx) {
         e.stopPropagation();
         if (confirm(`Delete ${sem.name}?`)) {
             planner.semesters.splice(idx, 1);
-            Data.save().then(renderDashboard);
+            Data.save().then(initDashboard);
         }
     };
 
@@ -197,19 +197,26 @@ function renameFolder(idx, newName, sem) {
 
 // Render table contents
 function renderSubjectTable(sem, container) {
+    container.innerHTML = "";
     const currentWW = calculateWW(sem.startDate);
-    const table = document.createElement("table");
     const subs = sem.subjects[planner.activeTab] || [];
 
+    let table = container.querySelector("table");
+
+    if (!table) {
+        table = document.createElement("table");
+        container.appendChild(table);
+    }
     // Table header
     let head = `<thead><tr><th class="col-subject">Subject</th><th class="col-abbr">Abbr.</th>`;
     
-    for (let i = 1; i <= WEEKS_COUNT; i++)
-        head += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
+    for (let i = 1; i <= WEEKS_COUNT; i++){
+        const isCurrentWW = (i === currentWW);
+        head += `<th class="${isCurrentWW ? 'current-week-col' : ''}">WW${i}</th>`;
+    }
+        
     head += `</tr></thead><tbody id="subBody"></tbody>`;
     table.innerHTML = head;
-
-    container.appendChild(table);
 
     // Table Cells
     const tbody = table.querySelector("#subBody");
@@ -237,7 +244,7 @@ function renderSubjectTable(sem, container) {
         for (let w = 1; w <= WEEKS_COUNT; w++) {
             const cellId = `${sem.id}-${planner.activeTab}-${sIdx}-${w}`;
 
-            row.appendChild(createDataCell(cellId, w === ww, sem));
+            row.appendChild(createDataCell(cellId, w === currentWW, sem));
         }
 
         tbody.appendChild(row);
@@ -399,6 +406,6 @@ function addDragListeners(el, type, idx) {
         const [movedItem] = list.splice(fromIdx, 1);
         list.splice(idx, 0, movedItem);
 
-        Data.save().then(type === 'folder' ? initPlanner : renderDashboard);
+        Data.save().then(type === 'folder' ? initPlanner : initDashboard);
     };
 }

@@ -57,7 +57,8 @@ if (legendHeader) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await Data.load().then(initDashboard);
+    await Data.load();
+    initDashboard();
 
     // Data export, import
     // TODO: Change style of mouse when over icon
@@ -127,12 +128,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         sem.folders.push(name);
         planner.activeTab = name;
 
-        Data.save().then(initPlanner); 
+        Data.save().then(() => { initPlanner(); }); 
     };
 
     document.getElementById("startDatePicker").onchange = (e) => {
         getActiveCard().startDate = e.target.value;
-        Data.save().then(initPlanner);
+        Data.save().then(() => { initPlanner(); }); 
     };
 
     document.getElementById("legendToggle").onclick = () => 
