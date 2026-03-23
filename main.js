@@ -8,47 +8,47 @@
 
 const messenger = window.messenger || window.browser;
 
-async function loadState() {
-    try {
-        const stored = await messenger.storage.local.get("plannerJSON");
-        if (stored.plannerJSON)
-            planner = stored.plannerJSON;
-    } catch (e) {
-        console.error("Storage failed:", e);
+let planner = { semesters: [], activeSemId: null, activeTab: null };
+let isEditMode = false;
+
+const Data = {
+    async load() {
+        try {
+            const storedData = await messenger.storage.local.get("plannerJSON");
+            if (storedData.plannerJSON) planner = storedData.plannerJSON;
+        } 
+        catch(e) { console.error("Storage failed:", e); } 
+    },
+
+    async save() {
+        try {
+            await messenger.storage.local.set({ plannerJSON: planner });
+        } 
+        catch (e) { console.error("Save failed:", e); }
     }
 }
 
-async function saveState() {
-    try {
-        await messenger.storage.local.set({ plannerJSON: planner });
-    } catch (e) {
-        console.error("Save failed:", e);
+// TODO: Probably move the back button here
+const UI = {
+    showView(viewId) {
+        isEditMode = false;
+        
+        document.querySelectorAll('.edit-active').forEach(btn => btn.classList.remove('edit-active'));
+        document.querySelectorAll('.view-container').forEach(view => view.classList.add('hidden'));
+        document.getElementById(viewId).classList.remove('hidden');
+
+        if (viewId === "dashboardView") initDashboard();
+        if (viewId === "plannerView") initPlanner();
+    },
+
+    toggleEdit(btnElement, refreshCallback) {
+        isEditMode = !isEditMode;
+        btnElement.classList.toggle("edit-active", isEditMode);
+        refreshCallback();
     }
 }
 
-// Helper functions
-function toggleEdit(btnElement, refreshCallback) {
-    isEditMode = !isEditMode;
-    btnElement.classList.toggle("edit-active", isEditMode);
-    refreshCallback();
-}
-
-function showView(viewId) {
-    isEditMode = false;
-    
-    document.querySelectorAll('.edit-active').forEach(btn => btn.classList.remove('edit-active'));
-
-    document.querySelectorAll('.view-container').forEach(view => view.classList.add('hidden'));
-    document.getElementById(viewId).classList.remove('hidden');
-
-    if (viewId === "dashboardView") renderDashboard();
-    if (viewId === "plannerView") initPlanner();
-}
-
-function getActiveSemester() {
-    return planner.semesters.find(s => s.id === planner.activeSemId);
-}
-
+// TODO: Remove
 const legendHeader = document.querySelector('.legend-header');
 if (legendHeader) {
     legendHeader.addEventListener('click', () => {
@@ -56,112 +56,89 @@ if (legendHeader) {
     });
 }
 
-// Buttons
 document.addEventListener("DOMContentLoaded", async () => {
-    await loadState();
-    renderDashboard();
+    await Data.load().then(initDashboard);
 
     // Data export, import
     // TODO: Change style of mouse when over icon
-    document.getElementById("exportBtn").onclick = async () => {
+    document.getElementById("exportBtn").onclick = () => {
         if (isEditMode)
             return;
 
-        const data = await messenger.storage.local.get("plannerJSON");
-        const blob = new Blob([JSON.stringify(data.plannerJSON, null, 2)], {type : 'application/json'});
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([JSON.stringify(planner, null, 2)], {type : 'application/json'});
         const a = document.createElement('a');
 
-        a.href = url;
-        a.download = `backup_${Date.now().toString()}.json`;
-
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_${Date.now()}.json`;
         a.click();
     };
 
-    document.getElementById("importBtn").onclick = () =>{ 
-        if (isEditMode)
-            return;
-
-        document.getElementById("importFile").click();
-    };
+    document.getElementById("importBtn").onclick = () => 
+        !isEditMode &&  document.getElementById("importFile").click();
 
     document.getElementById("importFile").onchange = (e) => {
+        const reader = new FileReader();
         const file = e.target.files[0];
 
         if (!file) 
             return;
-
-        const reader = new FileReader();
 
         reader.onload = async (event) => {
             try {
                 const importedData = JSON.parse(event.target.result, (key, value) => {
                     return (typeof value === 'string') ? value.trim() : value;
                 });
-                
-                if (importedData.semesters && Array.isArray(importedData.semesters)) {
-                    let addedCount = 0;
-                    let skippedCount = 0;
 
-                    importedData.semesters.forEach(newSem => {
-                        const exists = planner.semesters.some(existingSem => existingSem.id === newSem.id);
-                        
-                        if (!exists) {
-                            planner.semesters.push(newSem);
-                            addedCount++;
-                        } else {
-                            skippedCount++;
-                        }
-                    });
-
-                    await saveState();
-                    renderDashboard();
-                    
-                    alert(`Import Complete!\nAdded: ${addedCount} new semesters\nSkipped: ${skippedCount} duplicates`);
-                } else {
-                    alert("Invalid backup file format.");
+                if (importedData.semesters) {
+                    planner.semesters = [...planner.semesters, ...importedData.semesters.filter(ns => !planner.semesters.some(es => es.id === ns.id))];
+                    await Data.save().then(initDashboard);
                 }
-            } catch (err) {
-                alert("Error reading file: " + err.message);
-            }
-            e.target.value = ""; 
+            } 
+            catch (e) { alert("Error reading file: " + e.message); }
         };
-        
+
         reader.readAsText(file);
     };
 
     // Edit buttons
-    document.getElementById("editDashBtn").onclick = (e) => toggleEdit(e.currentTarget, renderDashboard);
+    // TODO: this can probably be writen in a different way
+    document.getElementById("editDashBtn").onclick = (e) => 
+        UI.toggleEdit(e.currentTarget, initDashboard);
 
     document.getElementById("editPlannerBtn").onclick = (e) => {
         isEditMode = !isEditMode;
         e.currentTarget.classList.toggle("edit-active", isEditMode);
         
-        // This allows the CSS hover effects to work
+        // allows the CSS hover effects to work
         document.getElementById("plannerView").classList.toggle("edit-active-planner", isEditMode);
         
         initPlanner();
     };
 
     // Backspace
-    document.getElementById("backToDash").onclick = () => showView("dashboardView");
+    document.getElementById("backToDash").onclick = () => 
+        UI.showView("dashboardView");
 
     // Planner
     document.getElementById("newFolder").onclick = () => {
-        const sem = getActiveSemester();
+        const sem = getActiveCard();
         const name = "New Folder";
 
         sem.folders.push(name);
-
         planner.activeTab = name;
 
-        saveState(); 
-        initPlanner();
+        Data.save().then(initPlanner); 
     };
 
     document.getElementById("startDatePicker").onchange = (e) => {
-        getActiveSemester().startDate = e.target.value;
-        saveState();
-        initPlanner(); 
+        getActiveCard().startDate = e.target.value;
+        Data.save().then(initPlanner);
     };
+
+    document.getElementById("legendToggle").onclick = () => 
+        document.getElementById("legendContent").classList.toggle("hidden");
 });
+
+function getActiveCard() {
+    return planner.semesters.find(s => s.id === planner.activeSemId);
+}

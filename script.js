@@ -6,8 +6,8 @@
  *  matmoj04    3.2025
  */
 
-const totalWeeks = 14;
-const iconData = [
+const WEEKS_COUNT = 14;
+const ICON_SET = [
     { html: "", class: "" },
     { html: '<i>󰄱</i>', class: "icon-empty" },
     { html: '<i>󰄵</i>', class: "icon-check" },
@@ -15,378 +15,333 @@ const iconData = [
     { html: '<i>󰤌</i>', class: "icon-notes" },
     { html: '<i>󰄮</i>', class: "icon-homew" }
 ];
-let planner = { semesters: [], activeSemId: null, activeTab: null };
-let isEditMode = false;
+
 
 // Dashboard view
 // TODO: Restructure code
-function renderDashboard() {
+function initDashboard() {
     const grid = document.getElementById("semesterGrid");
-    const dashView = document.getElementById("dashboardView");
     grid.innerHTML = "";
 
-    isEditMode ? dashView.classList.add("edit-mode-on") : dashView.classList.remove("edit-mode-on");
+    document.getElementById("dashboardView").classList.toggle("edit-mode-on", isEditMode);
 
     // Render cards
     planner.semesters.forEach((sem, idx) => {
-        const card = document.createElement("div");
-        card.className = "sem-card";
-        const titleSpan = document.createElement("span");
-
-        titleSpan.textContent = sem.name;
-        titleSpan.contentEditable = isEditMode;
-
-        titleSpan.onblur = () => { 
-            const cleanName = titleSpan.textContent.trim();
-            sem.name = cleanName;
-            titleSpan.textContent = cleanName;
-
-            saveState();
-        };
-
-        titleSpan.onkeydown = (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                titleSpan.blur();
-            }
-        };
-
-        card.appendChild(titleSpan);
-        
-        if (!isEditMode) 
-            card.onclick = () => openSemester(sem.id);
-
-        // Delete item
-        // TODO: Make button func for these type of operations
-        const del = document.createElement("button");
-        del.className = "delete-btn";
-        del.innerHTML = '<span class="nf">\uf00d</span>';
-
-        del.onclick = (e) => {
-            e.stopPropagation();
-            if (confirm(`Delete ${sem.name}?`)) {
-                planner.semesters.splice(idx, 1);
-                saveState(); renderDashboard();
-            }
-        };
-
-        card.appendChild(del);
-        addDragListeners(card, 'semester', idx);
+        const card = createCard(sem, idx);
         grid.appendChild(card);
     });
 
     if (isEditMode) {
         // Render add card
-        const addCard = document.createElement("div");
-        addCard.className = "sem-card add-card";
-        addCard.innerHTML = "+";
+        const addCardBtn = document.createElement("div");
+        addCardBtn.className = "sem-card add-card";
+        addCardBtn.innerHTML = "+";
 
-        addCard.onclick = () => {
+        // TODO: Start with date now
+        addCardBtn.onclick = () => {
             planner.semesters.push({ 
                 id: Date.now().toString(), 
                 name: "New Semester", 
-                startDate: "", 
-                folders: ["Prednášky", "Cvičenia", "Poznámky, Testy, Príprava", "Protokoly, Odovzdané"], 
+                startDate: Date.now(), 
+                folders: ["Lectures", "Seminars", "Notes, Tests, Prep.", "Protocols, Submited"], 
                 subjects: {}, 
                 schedule: {} 
             });
 
-            saveState(); 
-            renderDashboard();
+            Data.save().then(initDashboard);
         };
 
-        grid.appendChild(addCard);
+        grid.appendChild(addCardBtn);
     }
 }
 
 // Helper functions
+// TODO: Make button func for these type of operations
+function createCard(sem, idx) {
+    const card = document.createElement("div");
+    card.className = "sem-card";
+    
+    const title = document.createElement("span");
+    title.textContent = sem.name;
+    title.contentEditable = isEditMode;
+
+    title.onblur = () => { 
+        sem.name = title.textContent.trim(); 
+        Data.save();
+    };
+
+    title.onkeydown = (e) => e.key === 'Enter' && title.blur();
+
+    // Delete item 
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.innerHTML = '<span class="nf">\uf00d</span>';
+    del.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete ${sem.name}?`)) {
+            planner.semesters.splice(idx, 1);
+            Data.save().then(renderDashboard);
+        }
+    };
+
+    card.append(title, del);
+
+    if (!isEditMode)
+        card.onclick = () => openSemester(sem.id);
+
+    addDragListeners(card, 'semester', idx);
+
+    return card;
+}
+
 function openSemester(id) {
     planner.activeSemId = id;
-    const sem = getActiveSemester();
-
+    const sem = getActiveCard();
     planner.activeTab = sem.folders[0] || "";
-    document.getElementById("dashboardView").classList.add("hidden");
-    document.getElementById("plannerView").classList.remove("hidden");
-    
-    initPlanner();
+    UI.showView("plannerView");
 }
 
 // Table view
 // TODO: Restructure code
 function initPlanner() {
+    const sem = getActiveCard();
+    
+    if (!sem) 
+        return;
+
     const tabBar = document.getElementById("tabBar");
     const container = document.getElementById("tablesContainer");
-    const plannerView = document.getElementById("plannerView");
-
     tabBar.innerHTML = ""; 
-    container.innerHTML = "";
     
-    isEditMode ? plannerView.classList.add("edit-mode-on") : plannerView.classList.remove("edit-mode-on");
-    
-    const sem = getActiveSemester();
-    const currentWW = calculateWW(sem.startDate);
+    document.getElementById("plannerView").classList.toggle("edit-mode-on", isEditMode);
     document.getElementById("activeSemesterTitle").textContent = sem.name;
     document.getElementById("startDatePicker").value = sem.startDate || "";
-
-    sem.folders.forEach((cat, idx) => {
-        const tab = document.createElement("div");
-        tab.className = `tab ${cat === planner.activeTab ? 'active' : ''}`;
-        
-        const textSpan = document.createElement("span");
-        textSpan.textContent = cat;
-        textSpan.contentEditable = isEditMode;
-
-        tab.appendChild(textSpan);
-
-        // Delete Button for Tab
-        if (isEditMode) {
-            const delTab = document.createElement("button");
-            delTab.className = "delete-btn-tab";
-            delTab.innerHTML = '<span class="nf">\uf00d</span>';
-
-            delTab.onclick = (e) => {
-                e.stopPropagation();
-                if (confirm(`Delete folder "${cat}"?`)) {
-                    // Remove folder name
-                    sem.folders.splice(idx, 1);
-                    // Clean up subjects and schedule associated with this folder name
-                    delete sem.subjects[cat];
-                    
-                    // Reset active tab if we deleted the current one
-                    if (planner.activeTab === cat) {
-                        planner.activeTab = sem.folders[0] || "";
-                    }
-                    
-                    saveState(); 
-                    initPlanner();
-                }
-            };
-            tab.appendChild(delTab);
-        }
-
-        // Rename folder
-        textSpan.onblur = () => {
-            const newName = textSpan.textContent.trim();
-
-            if (newName && newName !== sem.folders[idx]) {
-                const oldName = sem.folders[idx];
-
-                sem.subjects[newName] = sem.subjects[oldName] || [];
-                delete sem.subjects[oldName];
-
-                // Copy data
-                if (sem.schedule) {
-                    Object.keys(sem.schedule).forEach(oldKey => {
-                        const parts = oldKey.split('-'); 
-                        
-                        if (parts[1] === oldName) {
-                            parts[1] = newName;
-                            const newKey = parts.join('-');
-                            
-                            sem.schedule[newKey] = sem.schedule[oldKey];
-                            delete sem.schedule[oldKey];
-                        }
-                    });
-                }
-
-                sem.folders[idx] = newName;
-                planner.activeTab = newName;
-
-                saveState();
-            }
-        };
-
-        tab.onclick = () => {
-            if (!isEditMode) {
-                planner.activeTab = cat;
-
-                initPlanner();
-            }
-        };
-
-        addDragListeners(tab, 'folder', idx);
+    
+    sem.folders.forEach((folder, idx) => {
+        const tab = createTab(folder, idx, sem);
         tabBar.appendChild(tab);
     });
 
-    renderSubjectTable(sem, currentWW, container);
+    renderSubjectTable(sem, container);
 }
 
-// Render table
-function renderSubjectTable(sem, currentWW, container) {
-    const table = document.createElement("table");
+function createTab(name, idx, sem) {
+    const tab = document.createElement("div");
+    tab.className = `tab ${name === planner.activeTab ? 'active' : ''}`;
 
-    // Header render
-    let html = `<thead><tr><th class="col-subject">Subject</th><th class="col-abbr">Abbr.</th>`;
-    
-    for (let i = 1; i <= totalWeeks; i++)
-        html += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
-    html += `</tr></thead><tbody id="subBody"></tbody>`;
-    
-    table.innerHTML = html;
-    container.appendChild(table);
+    const text = document.createElement("span");
+    text.textContent = name;
+    text.contentEditable = isEditMode;
+    text.onblur = () => renameFolder(idx, text.textContent.trim(), sem);
 
-    const subs = sem.subjects[planner.activeTab] || [];
-    const tbody = table.querySelector("#subBody");
-    
-    // Cells
-    subs.forEach((sub, sIdx) => {
-        const row = document.createElement("tr");
+    tab.appendChild(text);
 
-        // Name Column
-        const tdName = createEditableCell(sub.name, "col-subject", (val) => {
-            const cleanName = val.trim();
-            sub.name = cleanName;
+    // Delete Button for Tab
+    if (isEditMode) {
+        const delFolder = document.createElement("button");
+        delFolder.className = "delete-btn-tab";
+        delFolder.innerHTML = '<span class="nf">\uf00d</span>';
 
-            // Auto asign abbriviation
-            if (cleanName.includes(" ")) {
-                const subCode = cleanName.split(" ")[0];
-                const subAbbr = subCode.slice(5);
+        delFolder.onclick = (e) => {
+            e.stopPropagation();
 
-                sub.abbr = subAbbr.toUpperCase();
+            if (confirm(`Delete folder "${name}"?`)) {
+                // Remove folder name from list
+                sem.folders.splice(idx, 1);
+                // Clean up subjects and schedule associated with this folder name
+                delete sem.subjects[name];
                 
-                saveState();
-                initPlanner(); 
-            }
-        });
-
-        // Delete row
-        tdName.onclick = (e) => {
-            if (isEditMode) {
-                // Check if the user clicked the far-left side (where the icon is)
-                // 30px matches the padding we set in CSS
-                if (e.offsetX < 30) { 
-                    e.preventDefault();
-                    e.stopPropagation(); // Stop the text-editor from opening
-                    
-                    if (confirm(`Delete subject "${sub.name || 'this row'}"?`)) {
-                        sem.subjects[planner.activeTab].splice(sIdx, 1);
-                        saveState();
-                        initPlanner();
-                    }
-                    return false;
-                }
+                // Reset active tab if we deleted the current one
+                if (planner.activeTab === name)
+                    planner.activeTab = sem.folders[0] || "";
+                
+                Data.save().then(initPlanner);
             }
         };
 
-        row.appendChild(tdName);
+        tab.appendChild(delFolder);
+    } else {
+        tab.onclick = () => { 
+            planner.activeTab = name;
+            initPlanner();
+        }
+    }
 
-        // Abbreviation Column
-        row.appendChild(createEditableCell(sub.abbr, "col-abbr", (val) => sub.abbr = val.trim().toUpperCase() ));
-        
-        // Cells
-        for(let w = 1; w <= totalWeeks; w++) {
-            const td = document.createElement("td");
-            const id = `${sem.id}-${planner.activeTab}-${sIdx}-${w}`;
-            const data = sem.schedule[id] || {text:"", class:"", note:""};
+    addDragListeners(tab, 'folder', idx);
 
-            td.innerHTML = data.text || "";
+    return tab;
+}
 
-            if (data.class)
-                td.className = data.class;
+function renameFolder(idx, newName, sem) {
+    const oldName = sem.folders[idx];
+    if (!newName || newName === oldName) 
+        return;
+    
+    sem.subjects[newName] = sem.subjects[oldName] || [];
+    delete sem.subjects[oldName];
+    
+    Object.keys(sem.schedule).forEach(key => {
+        const parts = key.split('-');
+        if (parts[1] === oldName) {
+            parts[1] = newName;
+            sem.schedule[parts.join('-')] = sem.schedule[key];
+            delete sem.schedule[key];
+        }
+    });
+
+    sem.folders[idx] = newName;
+    planner.activeTab = newName;
+
+    Data.save().then(initPlanner);
+}
+
+// Render table contents
+function renderSubjectTable(sem, container) {
+    const currentWW = calculateWW(sem.startDate);
+    const table = document.createElement("table");
+    const subs = sem.subjects[planner.activeTab] || [];
+
+    // Table header
+    let head = `<thead><tr><th class="col-subject">Subject</th><th class="col-abbr">Abbr.</th>`;
+    
+    for (let i = 1; i <= WEEKS_COUNT; i++)
+        head += `<th class="${i===currentWW ? 'current-week-col' : ''}">WW${i}</th>`;
+    head += `</tr></thead><tbody id="subBody"></tbody>`;
+    table.innerHTML = head;
+
+    container.appendChild(table);
+
+    // Table Cells
+    const tbody = table.querySelector("#subBody");
+    subs.forEach((sub, sIdx) => {
+        const row = document.createElement("tr");
+
+        // First two columns
+        row.append(
+            createEditableCell(sub.name, "col-subject", (v) => {
+                sub.name = v;
+                if (v.includes(" "))
+                    sub.abbr = v.split(" ")[0].slice(5).toUpperCase();
+
+                Data.save().then(initPlanner);
+            }, true, sIdx),
             
-            if (data.note) {
-                td.title = data.note;
-                td.classList.add("note-indicator");
-            }
+            createEditableCell(sub.abbr, "col-abbr", (v) => {
+                sub.abbr = v.toUpperCase();
 
-            if(w === currentWW)
-                td.classList.add("current-week-col");
+                Data.save();
+            })
+        );
 
-            // Shuffle the icons on click
-            td.onclick = () => {
-                // Disable the cell while editing
-                if (isEditMode)
-                    return;
+        // Rest of the table
+        for (let w = 1; w <= WEEKS_COUNT; w++) {
+            const cellId = `${sem.id}-${planner.activeTab}-${sIdx}-${w}`;
 
-                // TODO: Change for item picker                
-                // Find current icon index by comparing HTML, and then find next
-                let currentIdx = iconData.findIndex(icon => icon.html === td.innerHTML);
-                let nextIdx = (currentIdx + 1) % iconData.length;
-                let nextIcon = iconData[nextIdx];
-
-                td.innerHTML = nextIcon.html;
-
-                const allIconClasses = iconData.map(i => i.class).filter(c => c !== "");
-                td.classList.remove(...allIconClasses);
-
-                if (nextIcon.class)
-                    td.classList.add(nextIcon.class);
-
-                saveCell(id, td.innerHTML, td.className, td.title);
-            };
-
-            // Add comment to cell
-            td.oncontextmenu = (e) => {
-                e.preventDefault();
-                
-                if (isEditMode) 
-                    return;
-                
-                const note = prompt("Comment:", td.title || "");
-                
-                if (note !== null) {
-                    td.title = note;
-                    note ? td.classList.add("note-indicator") : td.classList.remove("note-indicator");
-
-                    saveCell(id, td.innerHTML, td.className, td.title);
-                }
-            };
-
-            row.appendChild(td);
+            row.appendChild(createDataCell(cellId, w === ww, sem));
         }
 
         tbody.appendChild(row);
     });
 
-    // Add row
+    // Buttons in edit mode
     if (isEditMode) {
         const addBtn = document.createElement("button");
         addBtn.className = "add-row-btn";
         addBtn.innerHTML = '<span class="nf">\uf055</span> Add Subject';
-
+        
         addBtn.onclick = () => {
-            if (!sem.subjects[planner.activeTab]) 
+            if (!sem.subjects[planner.activeTab])
                 sem.subjects[planner.activeTab] = [];
-            
-            sem.subjects[planner.activeTab].push({
+
+            sem.subjects[planner.activeTab].push({ 
                 name: "",
                 abbr: ""
             });
 
-            saveState();
-            initPlanner();
+            Data.save().then(initPlanner);
         };
 
         container.appendChild(addBtn);
     }
 }
 
-// Helper functions
-function createEditableCell(text, className, onSave) {
+function createEditableCell(text, className, onSave, isSubject = false, sIdx = null) {
     const td = document.createElement("td");
-
     td.className = className;
     td.textContent = text;
     td.contentEditable = isEditMode;
+    td.onblur = () => onSave(td.textContent.trim());
+    
+    if (isSubject && isEditMode) {
+        // Delete row icon in edit mode
+        td.onclick = (e) => {
+            if (e.offsetX < 30 && confirm("Delete this row?"))
+                deleteSubject(sIdx);
+        };
+    }
 
-    td.onblur = () => {
-        onSave(td.textContent);
-        saveState();
+    return td;
+}
+
+function createDataCell(id, isCurrentWW, sem) {
+    const td = document.createElement("td");
+    const data = sem.schedule[id] || {text : "", class : "", note : ""};
+    
+    td.innerHTML = data.text;
+
+    if (data.class) 
+        td.className = data.class;
+
+    if (data.note) { 
+        td.title = data.note;
+        td.classList.add("note-indicator");
+    }
+
+    if (isCurrentWW)
+        td.classList.add("current-week-col");
+
+    // Shuffle the icons on click
+    // TODO: Change for item picker
+    td.onclick = () => {
+        if (isEditMode) 
+            return;
+
+        // Find current icon index by comparing HTML, and then find next
+        const currIdx = ICON_SET.findIndex(i => i.html === td.innerHTML);
+        const nextIdx = (currIdx + 1) % ICON_SET.length
+        const nextIcon = ICON_SET[nextIdx];
+
+        // Copy the info from the old cell
+        td.innerHTML = nextIcon.html;
+        td.className = nextIcon.class + (isCurrentWW ? " current-week-col" : "") + (td.title ? " note-indicator" : "");
+
+        saveCellState(id, td, sem);
+    };
+
+    // Add comment to cell
+    td.oncontextmenu = (e) => {
+        e.preventDefault();
+        if (isEditMode) 
+            return;
+
+        const note = prompt("Note:", td.title || "");
+        
+        if (note !== null) {
+            td.title = note;
+            note ? td.classList.add("note-indicator") : td.classList.remove("note-indicator");
+            saveCellState(id, td, sem);
+        }
     };
 
     return td;
 }
 
-function saveCell(id, html, color, note) {
-    const sem = getActiveSemester();
-
-    sem.schedule[id] = { 
-        text: html || "",
-        class: color || "",
-        note: note || ""
-    };
-
-    saveState();
+function saveCellState(id, el, sem) {
+    sem.schedule[id] = {
+        text: el.innerHTML,
+        class: el.className.replace("current-week-col", "").replace("note-indicator", "").trim(),
+        note: el.title };
+    Data.save();
 }
 
 function calculateWW(start) {
@@ -394,35 +349,33 @@ function calculateWW(start) {
         return -1;
     const diff = Math.floor((new Date() - new Date(start)) / (1000*60*60*24*7));
 
-    return (diff >= 0 && diff < totalWeeks) ? diff + 1 : -1;
+    return (diff >= 0 && diff < WEEKS_COUNT) ? diff + 1 : -1;
 }
 
 function deleteSubject(sIdx) {
-    const sem = getActiveSemester();
+    const sem = getActiveCard();
     const activeTab = planner.activeTab;
 
     // Remove the subject from the array
     sem.subjects[activeTab].splice(sIdx, 1);
 
-    // CRITICAL: Clean up the schedule data for this row 
-    // to prevent "ghost" data if a new row is added later
+    // Clean associated schedule IDs
     Object.keys(sem.schedule).forEach(key => {
         if (key.includes(`-${activeTab}-${sIdx}-`)) {
             delete sem.schedule[key];
         }
     });
 
-    saveState();
-    initPlanner();
+    Data.save().then(initPlanner);
 }
 
-// TODO: Look closer at function of the code
-// TODO: Folder drag not working
+// Move, cards folders, rows
+// TODO: Make the rows draggable
 function addDragListeners(el, type, idx) {
     el.draggable = isEditMode;
 
     el.ondragstart = (e) => { 
-        if(!isEditMode)
+        if (!isEditMode)
             return e.preventDefault();
 
         e.dataTransfer.setData("idx", idx); 
@@ -430,27 +383,22 @@ function addDragListeners(el, type, idx) {
         el.classList.add("dragging"); 
     };
 
-    /* Makes droping possible */
-    el.ondragover = (e) => {
+    // Makes droping possible
+    el.ondragover = (e) =>
         e.preventDefault();
-    }
 
-    /* Letting go of the mouse */
+    // Letting go of the mouse
     el.ondrop = (e) => {
-        e.preventDefault();
         el.classList.remove("dragging");
-
-        const sIdx = parseInt(e.dataTransfer.getData("idx"));
+        const fromIdx = parseInt(e.dataTransfer.getData("idx"));
         
-        if (e.dataTransfer.getData("type") !== type) 
+        if (e.dataTransfer.getData("type") !== type || fromIdx === idx) 
             return;
 
-        const list = type === 'folder' ? getActiveSemester().folders : planner.semesters;
-        const item = list.splice(sIdx, 1)[0];
-        list.splice(idx, 0, item);
+        const list = (type === 'folder') ? getActiveCard().folders : planner.semesters;
+        const [movedItem] = list.splice(fromIdx, 1);
+        list.splice(idx, 0, movedItem);
 
-        saveState();
-
-        type === 'folder' ? initPlanner() : renderDashboard();
+        Data.save().then(type === 'folder' ? initPlanner : renderDashboard);
     };
 }
